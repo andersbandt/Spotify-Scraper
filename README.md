@@ -19,3 +19,12 @@ There is a third category I see as well
 3. Listening *preferences**
 
 but I think that will require some additional datasets. The data Spotify sends you is purely ACCOUNT data, and is missing all the treasure troves of additional data I'm sure they on which they used to actually map your preferences and recommend songs. However, maybe simply a dataset mapping song names to simple genre would be good for some simple analysis
+
+## Usage
+Simply clone the repository and change the `file_dir` variable in `main.py`
+
+```
+# establish file information
+file_dir = "C:/your_path_here"
+```
+Then run `main.py`. You can comment/uncomment functions to change what plots will get generated
