@@ -28,3 +28,6 @@ Simply clone the repository and change the `file_dir` variable in `main.py`
 file_dir = "C:/your_path_here"
 ```
 Then run `main.py`. You can comment/uncomment functions to change what plots will get generated
+```
+python main.py
+```
