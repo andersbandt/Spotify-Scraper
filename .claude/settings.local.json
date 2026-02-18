@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(git -C /mnt/c/Users/ander/Documents/GitHub/Spotify-Scraper diff HEAD~1 HEAD --name-only)"
+    ]
+  }
+}
