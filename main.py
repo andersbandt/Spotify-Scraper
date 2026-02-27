@@ -14,16 +14,17 @@ import spotify_library
 # Directory containing your streaming history JSON files.
 # Supports both Extended Streaming History (endsong_*.json) and
 # basic Account Data history (StreamingHistory*.json) — auto-detected on load.
-#STREAMING_HISTORY_DIR = "~/OneDrive/Backup/company_data_exports/Spotify/2023_06_21_spotify/my_spotify_data - Account Data/MyData/"
-STREAMING_HISTORY_DIR = "~/OneDrive/Backup/company_data_exports/Spotify/2025_01_14_spotify/my_spotify_data/Spotify Extended Streaming History/"
-
+STREAMING_HISTORY_DIR = "~/OneDrive/Backup/company_data_exports/Spotify/2026_02_17_spotify/Spotify Extended Streaming History/"
 
 # Full path to Playlist1.json from Spotify's "Account Data" export.
-PLAYLIST_FILE = "~/OneDrive/Backup/company_data_exports/Spotify/2023_06_21_spotify/my_spotify_data - Account Data/MyData/Playlist1.json"
-
+PLAYLIST_FILE = "~/OneDrive/Backup/company_data_exports/Spotify/2026_02_17_spotify/Spotify Account Data/Playlist1.json"
 
 # Full path to YourLibrary.json from Spotify's "Account Data" export.
-LIBRARY_FILE = "~/OneDrive/Backup/company_data_exports/Spotify/2023_06_21_spotify/my_spotify_data - Account Data/MyData/YourLibrary.json"
+LIBRARY_FILE = "~/OneDrive/Backup/company_data_exports/Spotify/2026_02_17_spotify/Spotify Account Data/YourLibrary.json"
+
+# Older Playlist1.json used as the "before" snapshot for playlist diff (option 25).
+# Leave empty to disable the feature.
+OLD_PLAYLIST_FILE = "~/OneDrive/Backup/company_data_exports/Spotify/2023_06_21_spotify/Spotify Account Data/MyData/Playlist1.json"
 
 # Your local timezone for time-of-day charts (daytime_usage, listening_heatmap).
 # Uses IANA timezone names: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
@@ -60,11 +61,12 @@ MENU = """
   19   View playlist tracks
   20   Export playlist to CSV
   21   Playlist stats summary
+  22   Playlist diff (added / dropped since old export)
 
   ── Your Library (Liked Songs) ──────────────────────
-  22   Library stats (total liked, top artists)
-  23   Browse liked songs
-  24   Liked songs you actually listen to most
+  23   Library stats (total liked, top artists)
+  24   Browse liked songs
+  25   Liked songs you actually listen to most
 
   ── Other ───────────────────────────────────────────
    0   Run all streaming history analyses
@@ -93,6 +95,14 @@ def _require_playlists(playlists):
     return True
 
 
+def _require_old_playlists(old_playlists):
+    if old_playlists is None:
+        print("\n  Old playlist file not loaded.")
+        print("  Set OLD_PLAYLIST_FILE in main.py to the path of your older Playlist1.json.")
+        return False
+    return True
+
+
 def _require_library(library):
     """Print a helpful message and return False if library not loaded."""
     if library is None:
@@ -102,7 +112,7 @@ def _require_library(library):
     return True
 
 
-def run_menu(sp_dt, playlists, library):
+def run_menu(sp_dt, playlists, library, old_playlists):
     while True:
         print(MENU)
         choice = input("  Enter choice: ").strip().lower()
@@ -187,17 +197,23 @@ def run_menu(sp_dt, playlists, library):
             if _require_playlists(playlists):
                 spotify_playlists.playlist_stats(playlists)
 
-        # ── library ───────────────────────────────────────────────────────────
         elif choice == "22":
+            if _require_playlists(playlists) and _require_old_playlists(old_playlists):
+                spotify_playlists.list_playlists(playlists)
+                name = input("  Enter playlist name or number: ").strip()
+                spotify_playlists.playlist_diff(old_playlists, playlists, name)
+
+        # ── library ───────────────────────────────────────────────────────────
+        elif choice == "23":
             if _require_library(library):
                 spotify_library.library_stats(library)
 
-        elif choice == "23":
+        elif choice == "24":
             if _require_library(library):
                 artist = input("  Filter by artist (leave blank for all): ").strip()
                 spotify_library.browse_library(library, artist or None)
 
-        elif choice == "24":
+        elif choice == "25":
             if _require_library(library):
                 n = _prompt_int("Number of top liked songs to show", 20)
                 spotify_library.liked_vs_streamed(library, sp_dt, n)
@@ -255,4 +271,12 @@ if __name__ == "__main__":
     elif _library_path:
         print(f"  Warning: LIBRARY_FILE path not found: {_library_path}")
 
-    run_menu(sp_dt, playlists, library)
+    old_playlists = None
+    _old_playlist_path = os.path.expanduser(OLD_PLAYLIST_FILE) if OLD_PLAYLIST_FILE else ""
+    if _old_playlist_path and os.path.exists(_old_playlist_path):
+        print("Loading old playlists (for diff)...")
+        old_playlists = spotify_playlists.load_playlists(_old_playlist_path)
+    elif _old_playlist_path:
+        print(f"  Warning: OLD_PLAYLIST_FILE path not found: {_old_playlist_path}")
+
+    run_menu(sp_dt, playlists, library, old_playlists)

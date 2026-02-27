@@ -147,6 +147,67 @@ def playlist_stats(playlists):
     print()
 
 
+def playlist_diff(old_playlists, new_playlists, identifier):
+    """
+    Compare a playlist between two exports and print what was added and dropped.
+    Matches tracks by trackUri; falls back to 'artist||trackName' for local tracks.
+    """
+    # Resolve number/name against the new (displayed) list first, then match
+    # the same playlist by name in the old list so ordering differences don't
+    # cause a mismatch.
+    new_pl = _find_playlist(new_playlists, identifier)
+    if new_pl is None:
+        print(f"  Playlist '{identifier}' not found in new export.")
+        return
+
+    playlist_name = new_pl.get("name", "")
+    old_pl = _find_playlist(old_playlists, playlist_name)
+    if old_pl is None:
+        print(f"  Playlist '{playlist_name}' not found in old export (may not have existed yet).")
+        return
+
+    def _key(item):
+        track = item.get("track") or {}
+        uri = track.get("trackUri", "").strip()
+        if uri:
+            return uri
+        return f"{track.get('artistName', '')}||{track.get('trackName', '')}"
+
+    old_map = {_key(i): i for i in old_pl.get("items", []) if i.get("track")}
+    new_map = {_key(i): i for i in new_pl.get("items", []) if i.get("track")}
+
+    added_keys   = sorted(set(new_map) - set(old_map), key=lambda k: new_map[k].get("addedDate", ""))
+    dropped_keys = sorted(set(old_map) - set(new_map), key=lambda k: old_map[k].get("addedDate", ""))
+    kept         = len(set(old_map) & set(new_map))
+
+    print(f"\n  Playlist diff: {old_pl.get('name', identifier)}")
+    print(f"  Old  ({old_pl.get('lastModifiedDate', '?')}) : {len(old_map)} tracks")
+    print(f"  New  ({new_pl.get('lastModifiedDate', '?')}) : {len(new_map)} tracks")
+    print(f"  Added: {len(added_keys)}   Dropped: {len(dropped_keys)}   Unchanged: {kept}")
+
+    if added_keys:
+        print(f"\n  ── Added ({len(added_keys)}) " + "─" * 55)
+        print(f"  {'Track':<45} {'Artist':<30} Date added")
+        print("  " + "─" * 87)
+        for k in added_keys:
+            t = new_map[k].get("track", {})
+            print(f"  {str(t.get('trackName',''))[:43]:<45} "
+                  f"{str(t.get('artistName',''))[:28]:<30} "
+                  f"{new_map[k].get('addedDate','')}")
+
+    if dropped_keys:
+        print(f"\n  ── Dropped ({len(dropped_keys)}) " + "─" * 53)
+        print(f"  {'Track':<45} {'Artist':<30} Was added")
+        print("  " + "─" * 87)
+        for k in dropped_keys:
+            t = old_map[k].get("track", {})
+            print(f"  {str(t.get('trackName',''))[:43]:<45} "
+                  f"{str(t.get('artistName',''))[:28]:<30} "
+                  f"{old_map[k].get('addedDate','')}")
+
+    print()
+
+
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _find_playlist(playlists, identifier):
